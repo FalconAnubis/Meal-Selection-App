@@ -3,30 +3,37 @@ import datetime
 import random
 import json
 import pandas as pd
+import urllib.parse
 from datetime import timedelta
 
 # --- CONFIGURATION & DATA STORAGE ---
 DATA_FILE = 'dinner_data.json'
 
 def load_data():
+    default_data = {
+        "history": [], 
+        "current_month_plan": [], 
+        "categories": {
+            "Chicken": ["Chicken Wings", "Honey Garlic Chicken", "Chicken Tenders", "Chicken Stir-Fry", "Chicken Caesar", "Adobo", "Chicken Noodle Soup", "Creamy Lemon Butter Chicken", "Arroz Con Pollo"],
+            "Beef": ["Korean Beef Rice Bowl", "Burgers", "Meatloaf", "Beef Sliders", "Smash Burgers", "Steak Dinner", "Meatballs", "Steak and Chimichurri"],
+            "Pork": ["Pork Chops", "Pulled Pork", "Grilled Ham/Cheese", "Sausage Links", "Ribs", "Hotdogs", "Publix Deli"],
+            "Others": ["Salmon", "Tilapia", "Shrimp", "Scrambled Eggs", "Omelets", "Egg Salad Sandwich", "Mac and Cheese"],
+            "Veggie": ["Salad", "Veggie Stir-Fry", "Chic-Pea Alfredo", "Homemade Pizza", "Fondue", "Subway", "Dine Out Somewhere"],
+            "Taco": ["Beef Tacos", "Chicken Tacos", "Shrimp Tacos", "Beef Nachos", "Chicken Nachos", "Steak Nachos", "Beef Quesdilla", "Chicken Quesdilla", "Steak Quesdilla", "Burrito Bowl", "Taco in a Bag"]
+        },
+        "sides": ["Rice", "Broccoli", "Side Salad", "Corn", "Small Red Potatoes", "Asparagus", "Green Beans", "Zucchini", "Carrots"],
+        "ingredients": {} # New: Maps "Dish Name" -> ["Item 1", "Item 2"]
+    }
+    
     try:
         with open(DATA_FILE, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            # Ensure new keys exist if loading old file version
+            if "ingredients" not in data:
+                data["ingredients"] = {}
+            return data
     except FileNotFoundError:
-        # Default Data Structure
-        return {
-            "history": [], # List of {date: str, meat: str, side: str, category: str}
-            "current_month_plan": [], 
-            "categories": {
-                "Chicken": ["Grilled Chicken", "Chicken Parm", "Curry", "Stir Fry"],
-                "Beef": ["Steak", "Burgers", "Meatloaf", "Roast"],
-                "Pork": ["Pork Chops", "Pulled Pork", "Ham"],
-                "Fish": ["Salmon", "Tilapia", "Shrimp Scampi"],
-                "Pasta": ["Spaghetti", "Alfredo", "Lasagna"],
-                "Taco": ["Beef Tacos", "Chicken Tacos", "Fish Tacos", "Carnitas"] # Special Category
-            },
-            "sides": ["Rice", "Broccoli", "Side Salad", "Corn", "Mashed Potatoes", "Asparagus", "Green Beans"]
-        }
+        return default_data
 
 def save_data(data):
     with open(DATA_FILE, 'w') as f:
@@ -35,7 +42,6 @@ def save_data(data):
 # --- LOGIC ENGINE ---
 def get_days_remaining_in_month():
     today = datetime.date.today()
-    # Find the last day of the current month
     next_month = today.replace(day=28) + datetime.timedelta(days=4)
     last_day = next_month - datetime.timedelta(days=next_month.day)
     
@@ -48,24 +54,27 @@ def get_days_remaining_in_month():
 
 def check_constraints(date, category, item, side, data, week_category_counts):
     # 1. Category max 2 times a week
-    # Get ISO week number
     week_num = date.isocalendar()[1]
     if week_category_counts.get((week_num, category), 0) >= 2:
         return False
 
-    # Check history (Past 3 weeks for item, 2 weeks for side)
-    # Convert string dates in history to objects for comparison
+    # 2. Setup History Lookbacks
+    # Meat: 3 weeks
+    # Side: 5 days (New Rule)
     history_limit_item = date - timedelta(weeks=3)
-    history_limit_side = date - timedelta(weeks=2)
+    history_limit_side = date - timedelta(days=5) 
 
-    for record in data['history'] + data['current_month_plan']:
+    # Combine history and current plan for checking
+    all_records = data['history'] + data['current_month_plan']
+
+    for record in all_records:
         record_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
         
         # Rule: No repeat item for 3 weeks
         if record['meat'] == item and record_date >= history_limit_item and record_date < date:
             return False
             
-        # Rule: No repeat side for 2 weeks
+        # Rule: Side Cooldown (5 Days)
         if record['side'] == side and record_date >= history_limit_side and record_date < date:
             return False
             
@@ -74,45 +83,38 @@ def check_constraints(date, category, item, side, data, week_category_counts):
 def generate_schedule(data):
     days = get_days_remaining_in_month()
     new_plan = []
-    week_category_counts = {} # Key: (week_num, category), Value: count
-    
-    # Pre-fill specific constraints based on existing plan if needed
-    # For now, we wipe the future plan and regenerate
+    week_category_counts = {} 
     
     for day in days:
         week_num = day.isocalendar()[1]
         
-        # --- TACO TUESDAY LOGIC ---
-        if day.weekday() == 1: # 0 is Monday, 1 is Tuesday
+        # --- TACO TUESDAY ---
+        if day.weekday() == 1: 
             category = "Taco"
-            # Rotate meat: Look at last Taco Tuesday to pick different meat
             taco_options = data['categories']['Taco']
-            # Simple rotation or random choice that isn't the last one
             chosen_meat = random.choice(taco_options)
-            chosen_side = "Mexican Rice" # Force side or pick random
+            chosen_side = "Mexican Rice" # Default taco side
         
-        # --- STANDARD DAY LOGIC ---
+        # --- STANDARD DAY ---
         else:
-            # 1. Pick Category (excluding Taco)
+            # Pick Category
             valid_cats = [c for c in data['categories'].keys() if c != "Taco"]
             random.shuffle(valid_cats)
-            
             category = None
             for cat in valid_cats:
                 if week_category_counts.get((week_num, cat), 0) < 2:
                     category = cat
                     break
-            
-            if not category: category = random.choice(valid_cats) # Fallback
-            
-            # 2. Pick Meat & Side
+            if not category: category = random.choice(valid_cats)
+
+            # Pick Meat & Side with Retries
             meat_options = data['categories'][category]
             side_options = data['sides']
             
-            # Try to find a valid combination 50 times, otherwise force one
             chosen_meat = random.choice(meat_options)
             chosen_side = random.choice(side_options)
             
+            # Try 50 times to find a valid combo
             for _ in range(50):
                 m = random.choice(meat_options)
                 s = random.choice(side_options)
@@ -121,17 +123,15 @@ def generate_schedule(data):
                     chosen_side = s
                     break
 
-        # Record Selection
         week_category_counts[(week_num, category)] = week_category_counts.get((week_num, category), 0) + 1
         
-        entry = {
+        new_plan.append({
             "date": day.strftime("%Y-%m-%d"),
             "day_name": day.strftime("%A"),
             "category": category,
             "meat": chosen_meat,
             "side": chosen_side
-        }
-        new_plan.append(entry)
+        })
 
     data['current_month_plan'] = new_plan
     save_data(data)
@@ -139,12 +139,11 @@ def generate_schedule(data):
 
 # --- UI LAYOUT ---
 st.set_page_config(page_title="Dinner Planner", page_icon="🍽️")
-st.title("🍽️ Monthly Dinner Planner")
+st.title("🍽️ Dinner & Grocery App")
 
-# Load Data
 data = load_data()
 
-# Navigation (The 4 Buttons)
+# Navigation
 menu = st.radio("Menu", ["Generate", "This Month", "Edit Meals", "Send Out List"], horizontal=True)
 
 if menu == "Generate":
@@ -152,7 +151,7 @@ if menu == "Generate":
     st.write(f"Generate meals for the rest of {datetime.date.today().strftime('%B')}.")
     
     if st.button("Generate New List", type="primary"):
-        with st.spinner("Cooking up a schedule..."):
+        with st.spinner("Calculating logic..."):
             plan = generate_schedule(data)
         st.success("Menu Generated!")
         st.dataframe(pd.DataFrame(plan)[['day_name', 'date', 'meat', 'side']])
@@ -163,53 +162,100 @@ elif menu == "This Month":
         st.info("No plan generated yet.")
     else:
         df = pd.DataFrame(data['current_month_plan'])
-        # Display as a clean table
         st.table(df[['day_name', 'date', 'meat', 'side']])
 
 elif menu == "Edit Meals":
-    st.header("Edit Database")
+    st.header("Database Manager")
     
-    # Edit Categories and Items
-    st.subheader("Categories & Meats")
-    cat_to_edit = st.selectbox("Select Category", list(data['categories'].keys()))
+    tab1, tab2, tab3 = st.tabs(["1. Manage Categories", "2. Manage Sides", "3. Manage Ingredients"])
     
-    # Text area to edit items (comma separated)
-    current_items = ", ".join(data['categories'][cat_to_edit])
-    new_items_str = st.text_area(f"Items for {cat_to_edit} (comma separated)", current_items)
-    
-    if st.button("Save Items"):
-        new_list = [x.strip() for x in new_items_str.split(",")]
-        data['categories'][cat_to_edit] = new_list
-        save_data(data)
-        st.success(f"Saved {cat_to_edit}!")
+    with tab1:
+        cat_to_edit = st.selectbox("Select Category", list(data['categories'].keys()))
+        current_items = ", ".join(data['categories'][cat_to_edit])
+        new_items_str = st.text_area(f"Dishes for {cat_to_edit} (comma separated)", current_items)
+        if st.button("Save Category Items"):
+            new_list = [x.strip() for x in new_items_str.split(",")]
+            data['categories'][cat_to_edit] = new_list
+            save_data(data)
+            st.success(f"Saved {cat_to_edit}!")
 
-    # Edit Sides
-    st.subheader("Sides")
-    current_sides = ", ".join(data['sides'])
-    new_sides_str = st.text_area("Sides (comma separated)", current_sides)
-    if st.button("Save Sides"):
-        new_list = [x.strip() for x in new_sides_str.split(",")]
-        data['sides'] = new_list
-        save_data(data)
-        st.success("Sides Updated!")
+    with tab2:
+        current_sides = ", ".join(data['sides'])
+        new_sides_str = st.text_area("Sides (comma separated)", current_sides)
+        if st.button("Save Sides"):
+            new_list = [x.strip() for x in new_sides_str.split(",")]
+            data['sides'] = new_list
+            save_data(data)
+            st.success("Sides Updated!")
+            
+    with tab3:
+        st.info("Assign grocery ingredients to specific dishes (Meats or Sides).")
+        
+        # Compile a master list of all known dishes and sides
+        all_dishes = []
+        for cat in data['categories']:
+            all_dishes.extend(data['categories'][cat])
+        all_dishes.extend(data['sides'])
+        all_dishes = sorted(list(set(all_dishes))) # Unique & Sorted
+        
+        selected_dish = st.selectbox("Select Dish to Edit Ingredients", all_dishes)
+        
+        # Get existing ingredients
+        existing_ing = ", ".join(data['ingredients'].get(selected_dish, []))
+        
+        new_ing_str = st.text_area(f"Ingredients needed for {selected_dish}", existing_ing, help="Separate by comma (e.g. Ground Beef, Cheese, Shells)")
+        
+        if st.button(f"Save Ingredients for {selected_dish}"):
+            if new_ing_str.strip():
+                ing_list = [x.strip() for x in new_ing_str.split(",") if x.strip()]
+                data['ingredients'][selected_dish] = ing_list
+            else:
+                # If empty, remove the key
+                if selected_dish in data['ingredients']:
+                    del data['ingredients'][selected_dish]
+            save_data(data)
+            st.success("Ingredients Saved!")
 
 elif menu == "Send Out List":
-    st.header("Send Out List")
+    st.header("Grocery List Export")
+    
     if not data['current_month_plan']:
-        st.warning("Generate a list first.")
+        st.warning("Please Generate a schedule first.")
     else:
-        # Format the text message
-        msg_lines = ["Here is the dinner menu for the rest of the month:"]
+        st.write("Aggregating ingredients based on the current schedule...")
+        
+        grocery_list = []
+        missing_ing_dishes = []
+        
         for meal in data['current_month_plan']:
-            msg_lines.append(f"{meal['date']} ({meal['day_name']}): {meal['meat']} with {meal['side']}")
+            # Get meat ingredients
+            if meal['meat'] in data['ingredients']:
+                grocery_list.extend(data['ingredients'][meal['meat']])
+            else:
+                missing_ing_dishes.append(meal['meat'])
+                
+            # Get side ingredients
+            if meal['side'] in data['ingredients']:
+                grocery_list.extend(data['ingredients'][meal['side']])
+            else:
+                missing_ing_dishes.append(meal['side'])
         
-        final_msg = "\n".join(msg_lines)
+        # Deduplicate list and sort
+        unique_grocery_list = sorted(list(set(grocery_list)))
         
-        st.text_area("Copy this text:", final_msg, height=300)
+        # Display warnings for missing data
+        if missing_ing_dishes:
+            unique_missing = list(set(missing_ing_dishes))
+            st.warning(f"⚠️ The following items in your schedule have no ingredients defined: {', '.join(unique_missing)}")
+            
+        # Format Message
+        msg_header = f"Grocery List for {datetime.date.today().strftime('%B')}:\n"
+        msg_body = "\n".join([f"- {item}" for item in unique_grocery_list])
+        final_msg = msg_header + msg_body
         
-        # Link for Mobile SMS
-        # Note: formatting newlines in HTML links is tricky, using %0a
-        import urllib.parse
+        st.text_area("Preview:", final_msg, height=300)
+        
+        # SMS Button
         encoded_msg = urllib.parse.quote(final_msg)
         st.markdown(f'''<a href="sms:&body={encoded_msg}"><button style="
             background-color:#4CAF50;
@@ -217,6 +263,7 @@ elif menu == "Send Out List":
             padding: 10px 24px;
             border: none;
             border-radius: 4px;
-            cursor: pointer;">
-            Open in Messages App
+            cursor: pointer;
+            width: 100%;">
+            📱 Send Grocery List as Text
             </button></a>''', unsafe_allow_html=True)
