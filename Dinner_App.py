@@ -41,6 +41,19 @@ def save_data(data):
 
 # --- LOGIC HELPERS ---
 
+def get_days_remaining_in_month():
+    today = datetime.date.today()
+    # Find the last day of the current month
+    next_month = today.replace(day=28) + datetime.timedelta(days=4)
+    last_day = next_month - datetime.timedelta(days=next_month.day)
+    
+    days_left = []
+    current = today
+    while current <= last_day:
+        days_left.append(current)
+        current += timedelta(days=1)
+    return days_left
+
 def get_special_side_logic(dish_name, category):
     """
     Determines if a dish has a fixed side or no side.
@@ -166,8 +179,6 @@ def generate_schedule(data):
                 if new_special:
                     chosen_side = new_special
                     # If special side found, we accept this meat (assuming meat history is ok)
-                    # For simplicity in this complex loop, we break if meat history allows
-                     # Re-check just meat history constraints would be ideal, but standard check is fine
                     break 
                 else:
                     chosen_side = random.choice(side_options)
