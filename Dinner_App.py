@@ -28,7 +28,6 @@ def load_data():
     try:
         with open(DATA_FILE, 'r') as f:
             data = json.load(f)
-            # Ensure new keys exist if loading old file version
             if "ingredients" not in data:
                 data["ingredients"] = {}
             return data
@@ -43,7 +42,6 @@ def save_data(data):
 
 def get_days_remaining_in_month():
     today = datetime.date.today()
-    # Find the last day of the current month
     next_month = today.replace(day=28) + datetime.timedelta(days=4)
     last_day = next_month - datetime.timedelta(days=next_month.day)
     
@@ -55,12 +53,7 @@ def get_days_remaining_in_month():
     return days_left
 
 def get_special_side_logic(dish_name, category):
-    """
-    Determines if a dish has a fixed side or no side.
-    Returns: The Side Name (str) or None (if it should be random).
-    """
-    
-    # 1. FIXED SIDES (These override everything else)
+    # 1. FIXED SIDES
     fixed_sides = {
         "Chicken Noodle Soup": "Garlic Bread",
         "Chicken Tenders": "Tater Tots",
@@ -71,30 +64,20 @@ def get_special_side_logic(dish_name, category):
         "Fondue": "Ham, Broccoli, Green Apples, and Mountain Bread",
         "Taco in a Bag": "Chips"
     }
-    
-    if dish_name in fixed_sides:
-        return fixed_sides[dish_name]
+    if dish_name in fixed_sides: return fixed_sides[dish_name]
 
-    # 2. NO SIDE LIST (Exact Matches)
+    # 2. NO SIDE LIST
     no_side_exact = [
         "Homemade Pizza", "Subway", "Adobo", "Arroz Con Pollo", 
         "Korean Beef Rice Bowl", "Publix Deli", "Omelets", 
         "Egg Salad Sandwich", "Mac and Cheese", "Salad"
     ]
-    
-    if dish_name in no_side_exact:
-        return "No Side"
+    if dish_name in no_side_exact: return "No Side"
 
     # 3. NO SIDE CATEGORY RULES
-    # Rule: All Tacos get No Side (Unless caught by Fixed Side above, like Taco in a Bag)
-    if category == "Taco":
-        return "No Side"
-        
-    # Rule: Any Stir-Fry gets No Side
-    if "Stir-Fry" in dish_name:
-        return "No Side"
+    if category == "Taco": return "No Side"
+    if "Stir-Fry" in dish_name: return "No Side"
 
-    # If neither fixed nor forbidden, return None (implies Random)
     return None
 
 def check_constraints(date, category, item, side, data, week_category_counts):
@@ -103,7 +86,7 @@ def check_constraints(date, category, item, side, data, week_category_counts):
     if week_category_counts.get((week_num, category), 0) >= 2:
         return False
 
-    # 2. Setup History Lookbacks
+    # 2. History Lookbacks
     history_limit_item = date - timedelta(weeks=3)
     history_limit_side = date - timedelta(days=5) 
 
@@ -112,12 +95,9 @@ def check_constraints(date, category, item, side, data, week_category_counts):
     for record in all_records:
         record_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
         
-        # Rule: No repeat Meat for 3 weeks
         if record['meat'] == item and record_date >= history_limit_item and record_date < date:
             return False
             
-        # Rule: Side Cooldown (5 Days) - ONLY applies to random sides
-        # If side is "No Side", we don't care about cooldowns
         if side != "No Side":
             if record['side'] == side and record_date >= history_limit_side and record_date < date:
                 return False
@@ -136,12 +116,10 @@ def generate_schedule(data):
         if day.weekday() == 1: 
             category = "Taco"
             taco_options = data['categories']['Taco']
-            # Rotate meat logic could go here, for now random
             chosen_meat = random.choice(taco_options)
         
         # --- STANDARD DAY ---
         else:
-            # Pick Category
             valid_cats = [c for c in data['categories'].keys() if c != "Taco"]
             random.shuffle(valid_cats)
             category = None
@@ -155,30 +133,21 @@ def generate_schedule(data):
             chosen_meat = random.choice(meat_options)
 
         # --- DETERMINE SIDE ---
-        # 1. Check if this meat has a forced/special side
         special_side = get_special_side_logic(chosen_meat, category)
         
         if special_side:
             chosen_side = special_side
-            # We skip constraint checking for Fixed Sides because they are mandatory
         else:
-            # 2. Random Side Selection
             side_options = data['sides']
             chosen_side = random.choice(side_options)
             
-            # Try 50 times to find a valid combo (Cooldowns applied here)
-            # We re-roll both meat and side to find a combo that fits constraints
             for _ in range(50):
                 if check_constraints(day, category, chosen_meat, chosen_side, data, week_category_counts):
                     break
-                # If failed, re-roll
                 chosen_meat = random.choice(data['categories'][category])
-                
-                # Check if the NEW meat has a special side
                 new_special = get_special_side_logic(chosen_meat, category)
                 if new_special:
                     chosen_side = new_special
-                    # If special side found, we accept this meat (assuming meat history is ok)
                     break 
                 else:
                     chosen_side = random.choice(side_options)
@@ -210,11 +179,37 @@ if menu == "Generate":
     st.header("Generate Schedule")
     st.write(f"Generate meals for the rest of {datetime.date.today().strftime('%B')}.")
     
+    # Initialize Session State for Warning
+    if 'confirm_override' not in st.session_state:
+        st.session_state.confirm_override = False
+
+    # Main Button
     if st.button("Generate New List", type="primary"):
-        with st.spinner("Calculating logic..."):
-            plan = generate_schedule(data)
-        st.success("Menu Generated!")
-        st.dataframe(pd.DataFrame(plan)[['day_name', 'date', 'meat', 'side']])
+        # Check if list exists
+        if len(data['current_month_plan']) > 0:
+            st.session_state.confirm_override = True
+        else:
+            # Safe to generate immediately
+            with st.spinner("Cooking up a schedule..."):
+                plan = generate_schedule(data)
+            st.success("Menu Generated!")
+            st.dataframe(pd.DataFrame(plan)[['day_name', 'date', 'meat', 'side']])
+
+    # Safety Check UI
+    if st.session_state.confirm_override:
+        st.warning("A list has already been generated for this month. Generating a new list will override the previous list. This can not be undone. Do you wish to continue and override?")
+        col1, col2 = st.columns(2)
+        
+        if col1.button("Yes"):
+            with st.spinner("Overriding and cooking..."):
+                plan = generate_schedule(data)
+            st.session_state.confirm_override = False # Reset state
+            st.success("New Menu Generated!")
+            st.dataframe(pd.DataFrame(plan)[['day_name', 'date', 'meat', 'side']])
+            
+        if col2.button("No"):
+            st.session_state.confirm_override = False # Reset state
+            st.rerun() # Refresh to clear warning
 
 elif menu == "This Month":
     st.header("This Month's Schedule")
@@ -251,18 +246,14 @@ elif menu == "Edit Meals":
     with tab3:
         st.info("Assign grocery ingredients to specific dishes (Meats or Sides).")
         
-        # Compile a master list of all known dishes and sides
         all_dishes = []
         for cat in data['categories']:
             all_dishes.extend(data['categories'][cat])
         all_dishes.extend(data['sides'])
-        all_dishes = sorted(list(set(all_dishes))) # Unique & Sorted
+        all_dishes = sorted(list(set(all_dishes))) 
         
         selected_dish = st.selectbox("Select Dish to Edit Ingredients", all_dishes)
-        
-        # Get existing ingredients
         existing_ing = ", ".join(data['ingredients'].get(selected_dish, []))
-        
         new_ing_str = st.text_area(f"Ingredients needed for {selected_dish}", existing_ing, help="Separate by comma (e.g. Ground Beef, Cheese, Shells)")
         
         if st.button(f"Save Ingredients for {selected_dish}"):
@@ -287,34 +278,27 @@ elif menu == "Send Out List":
         missing_ing_dishes = []
         
         for meal in data['current_month_plan']:
-            # 1. Get meat ingredients
             if meal['meat'] in data['ingredients']:
                 grocery_list.extend(data['ingredients'][meal['meat']])
             else:
                 missing_ing_dishes.append(meal['meat'])
                 
-            # 2. Get side ingredients (Only if side exists and has ingredients)
             if meal['side'] != "No Side":
                 if meal['side'] in data['ingredients']:
                     grocery_list.extend(data['ingredients'][meal['side']])
-                # Note: We intentionally removed the "else missing_ing_dishes" for sides here
         
-        # Deduplicate list and sort
         unique_grocery_list = sorted(list(set(grocery_list)))
         
-        # Display warnings for missing MEAT data only
         if missing_ing_dishes:
             unique_missing = list(set(missing_ing_dishes))
             st.warning(f"⚠️ The following Main Dishes have no ingredients defined: {', '.join(unique_missing)}")
             
-        # Format Message
         msg_header = f"Grocery List for {datetime.date.today().strftime('%B')}:\n"
         msg_body = "\n".join([f"- {item}" for item in unique_grocery_list])
         final_msg = msg_header + msg_body
         
         st.text_area("Preview:", final_msg, height=300)
         
-        # SMS Button
         encoded_msg = urllib.parse.quote(final_msg)
         st.markdown(f'''<a href="sms:&body={encoded_msg}"><button style="
             background-color:#4CAF50;
