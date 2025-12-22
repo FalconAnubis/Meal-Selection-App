@@ -4,72 +4,72 @@
         {
             "date": "2025-12-22",
             "day_name": "Monday",
-            "category": "Beef",
-            "meat": "Burgers",
-            "side": "Fries"
+            "category": "Others",
+            "meat": "Tilapia",
+            "side": "Corn"
         },
         {
             "date": "2025-12-23",
             "day_name": "Tuesday",
             "category": "Taco",
-            "meat": "Burrito Bowl",
+            "meat": "Shrimp Tacos",
             "side": "No Side"
         },
         {
             "date": "2025-12-24",
             "day_name": "Wednesday",
             "category": "Veggie",
-            "meat": "Homemade Pizza",
-            "side": "No Side"
+            "meat": "Fondue",
+            "side": "Ham, Broccoli, Green Apples, and Mountain Bread"
         },
         {
             "date": "2025-12-25",
             "day_name": "Thursday",
-            "category": "Others",
-            "meat": "Salmon",
-            "side": "Corn"
+            "category": "Chicken",
+            "meat": "Adobo",
+            "side": "No Side"
         },
         {
             "date": "2025-12-26",
             "day_name": "Friday",
-            "category": "Beef",
-            "meat": "Smash Burgers",
-            "side": "Tater Tots"
+            "category": "Others",
+            "meat": "Salmon",
+            "side": "Side Salad"
         },
         {
             "date": "2025-12-27",
             "day_name": "Saturday",
             "category": "Pork",
-            "meat": "Sausage Links",
-            "side": "Rice"
+            "meat": "Pork Chops",
+            "side": "Zucchini"
         },
         {
             "date": "2025-12-28",
             "day_name": "Sunday",
             "category": "Veggie",
-            "meat": "Subway",
+            "meat": "Veggie Stir-Fry",
             "side": "No Side"
         },
         {
             "date": "2025-12-29",
             "day_name": "Monday",
-            "category": "Others",
-            "meat": "Scrambled Eggs",
-            "side": "Side Salad"
+            "category": "Beef",
+            "meat": "Korean Beef Rice Bowl",
+            "side": "No Side"
         },
         {
             "date": "2025-12-30",
             "day_name": "Tuesday",
             "category": "Taco",
-            "meat": "Taco in a Bag",
-            "side": "Chips"
+            "meat": "Chicken Quesdilla",
+            "side": "No Side"
         },
         {
             "date": "2025-12-31",
             "day_name": "Wednesday",
             "category": "Pork",
-            "meat": "Grilled Ham/Cheese",
-            "side": "Asparagus"
+            "meat": "Hotdogs",
+            "side": "Broccoli"
         }
     ],
     "categories": {
@@ -525,5 +525,9 @@
             "Zucchini"
         ]
     },
-    "shopping_status": {}
+    "shopping_status": {
+        "Broccoli_Fondue_2025-12-24": false,
+        "Broccoli_Adobo_2025-12-25": false,
+        "Broccoli_Veggie Stir-Fry_2025-12-28": false
+    }
 }

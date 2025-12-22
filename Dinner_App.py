@@ -12,14 +12,12 @@ from datetime import timedelta
 USER_DB_FILE = 'users.json'
 PROFILE_DIR = 'profiles'
 
-# Ensure the profile directory exists
 if not os.path.exists(PROFILE_DIR):
     os.makedirs(PROFILE_DIR)
 
 # --- SECURITY & AUTH FUNCTIONS ---
 
 def hash_password(password):
-    """Converts a password to a secure hash."""
     return hashlib.sha256(str.encode(password)).hexdigest()
 
 def load_user_db():
@@ -27,7 +25,7 @@ def load_user_db():
         with open(USER_DB_FILE, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        return {} # Returns empty dict if no users exist yet
+        return {}
 
 def save_user_db(db):
     with open(USER_DB_FILE, 'w') as f:
@@ -44,12 +42,9 @@ def create_user(username, password):
     db = load_user_db()
     if username in db:
         return False, "Username already exists."
-    
-    # Save new user
     db[username] = hash_password(password)
     save_user_db(db)
     
-    # Create a default data file for them
     default_data = get_default_data()
     user_file = os.path.join(PROFILE_DIR, f"{username}.json")
     with open(user_file, 'w') as f:
@@ -57,7 +52,7 @@ def create_user(username, password):
         
     return True, "User created successfully."
 
-# --- DATA MANAGEMENT (PER USER) ---
+# --- DATA MANAGEMENT ---
 
 def get_default_data():
     return {
@@ -81,14 +76,12 @@ def load_user_data(username):
     try:
         with open(user_file, 'r') as f:
             data = json.load(f)
-            # Ensure consistency (in case we add new features later)
             defaults = get_default_data()
             for key in defaults:
                 if key not in data:
                     data[key] = defaults[key]
             return data
     except FileNotFoundError:
-        # Fallback if file missing (shouldn't happen if created correctly)
         return get_default_data()
 
 def save_user_data(username, data):
@@ -102,7 +95,6 @@ def get_days_remaining_in_month():
     today = datetime.date.today()
     next_month = today.replace(day=28) + datetime.timedelta(days=4)
     last_day = next_month - datetime.timedelta(days=next_month.day)
-    
     days_left = []
     current = today
     while current <= last_day:
@@ -112,40 +104,26 @@ def get_days_remaining_in_month():
 
 def get_special_side_logic(dish_name, category):
     fixed_sides = {
-        "Chicken Noodle Soup": "Garlic Bread",
-        "Chicken Tenders": "Tater Tots",
-        "Burgers": "Fries",
-        "Beef Sliders": "Fries",
-        "Smash Burgers": "Tater Tots",
-        "Meatballs": "Pasta",
-        "Fondue": "Ham, Broccoli, Green Apples, and Mountain Bread",
+        "Chicken Noodle Soup": "Garlic Bread", "Chicken Tenders": "Tater Tots",
+        "Burgers": "Fries", "Beef Sliders": "Fries", "Smash Burgers": "Tater Tots",
+        "Meatballs": "Pasta", "Fondue": "Ham, Broccoli, Green Apples, and Mountain Bread",
         "Taco in a Bag": "Chips"
     }
     if dish_name in fixed_sides: return fixed_sides[dish_name]
-
-    no_side_exact = [
-        "Homemade Pizza", "Subway", "Adobo", "Arroz Con Pollo", 
-        "Korean Beef Rice Bowl", "Publix Deli", "Omelets", 
-        "Egg Salad Sandwich", "Mac and Cheese", "Salad"
-    ]
+    no_side_exact = ["Homemade Pizza", "Subway", "Adobo", "Arroz Con Pollo", "Korean Beef Rice Bowl", "Publix Deli", "Omelets", "Egg Salad Sandwich", "Mac and Cheese", "Salad"]
     if dish_name in no_side_exact: return "No Side"
-
-    if category == "Taco": return "No Side"
-    if "Stir-Fry" in dish_name: return "No Side"
-
+    if category == "Taco" or "Stir-Fry" in dish_name: return "No Side"
     return None
 
 def is_category_allowed(category, date, data, current_plan, week_category_counts):
     week_num = date.isocalendar()[1]
-    if week_category_counts.get((week_num, category), 0) >= 2:
-        return False
+    if week_category_counts.get((week_num, category), 0) >= 2: return False
     history_limit = date - timedelta(days=3)
     all_records = data['history'] + current_plan
     for record in all_records:
         r_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
         if r_date >= history_limit and r_date < date:
-            if record['category'] == category:
-                return False
+            if record['category'] == category: return False
     return True
 
 def is_meat_allowed(meat, date, data, current_plan):
@@ -154,8 +132,7 @@ def is_meat_allowed(meat, date, data, current_plan):
     for record in all_records:
         r_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
         if r_date >= history_limit and r_date < date:
-            if record['meat'] == meat:
-                return False
+            if record['meat'] == meat: return False
     return True
 
 def is_side_allowed(side, date, data, current_plan):
@@ -165,48 +142,31 @@ def is_side_allowed(side, date, data, current_plan):
     for record in all_records:
         r_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
         if r_date >= history_limit and r_date < date:
-            if record['side'] == side:
-                return False
+            if record['side'] == side: return False
     return True
 
 def generate_schedule(data, username):
     days = get_days_remaining_in_month()
     new_plan = []
     week_category_counts = {} 
-    
     data['shopping_status'] = {}
 
     for day in days:
         week_num = day.isocalendar()[1]
         
         # 1. Category
-        if day.weekday() == 1: 
-            category = "Taco"
+        if day.weekday() == 1: category = "Taco"
         else:
             all_cats = [c for c in data['categories'].keys() if c != "Taco"]
-            valid_cats = []
-            for cat in all_cats:
-                if is_category_allowed(cat, day, data, new_plan, week_category_counts):
-                    valid_cats.append(cat)
-            
-            if not valid_cats:
-                valid_cats = [c for c in all_cats if week_category_counts.get((week_num, c), 0) < 2]
-            if not valid_cats:
-                valid_cats = all_cats
-
+            valid_cats = [c for c in all_cats if is_category_allowed(c, day, data, new_plan, week_category_counts)]
+            if not valid_cats: valid_cats = [c for c in all_cats if week_category_counts.get((week_num, c), 0) < 2]
+            if not valid_cats: valid_cats = all_cats
             category = random.choice(valid_cats)
 
         # 2. Meat
         meat_options = data['categories'][category]
-        valid_meats = []
-        for m in meat_options:
-            if is_meat_allowed(m, day, data, new_plan):
-                valid_meats.append(m)
-        
-        if not valid_meats:
-            chosen_meat = random.choice(meat_options)
-        else:
-            chosen_meat = random.choice(valid_meats)
+        valid_meats = [m for m in meat_options if is_meat_allowed(m, day, data, new_plan)]
+        chosen_meat = random.choice(valid_meats) if valid_meats else random.choice(meat_options)
 
         # 3. Side
         special_side = get_special_side_logic(chosen_meat, category)
@@ -214,71 +174,114 @@ def generate_schedule(data, username):
             chosen_side = special_side
         else:
             side_options = data['sides']
-            valid_sides = []
-            for s in side_options:
-                if is_side_allowed(s, day, data, new_plan):
-                    valid_sides.append(s)
-            if not valid_sides:
-                chosen_side = random.choice(side_options)
-            else:
-                chosen_side = random.choice(valid_sides)
+            valid_sides = [s for s in side_options if is_side_allowed(s, day, data, new_plan)]
+            chosen_side = random.choice(valid_sides) if valid_sides else random.choice(side_options)
 
         week_category_counts[(week_num, category)] = week_category_counts.get((week_num, category), 0) + 1
-        
-        new_plan.append({
-            "date": day.strftime("%Y-%m-%d"),
-            "day_name": day.strftime("%A"),
-            "category": category,
-            "meat": chosen_meat,
-            "side": chosen_side
-        })
+        new_plan.append({"date": day.strftime("%Y-%m-%d"), "day_name": day.strftime("%A"), "category": category, "meat": chosen_meat, "side": chosen_side})
 
     data['current_month_plan'] = new_plan
     save_user_data(username, data)
     return new_plan
 
 def calculate_grocery_list(data):
+    """
+    Calculates grocery list only for meals occurring within the next 7 days.
+    """
     grocery_list = []
     missing_ing_dishes = []
-    
-    if not data['current_month_plan']:
-        return [], []
+    if not data['current_month_plan']: return [], []
+
+    # --- NEW LOGIC: Define the 7-day Window ---
+    today = datetime.date.today()
+    cutoff_date = today + datetime.timedelta(days=7)
 
     for meal in data['current_month_plan']:
-        date = meal['date']
-        # Meat Ingredients
+        # Convert meal string date to object
+        meal_date_obj = datetime.datetime.strptime(meal['date'], "%Y-%m-%d").date()
+        
+        # --- FILTER: Check if meal is within the window (Today -> Today+7) ---
+        if meal_date_obj < today:
+            continue # Skip past meals
+        if meal_date_obj > cutoff_date:
+            continue # Skip meals further than a week out
+
+        date_str = meal['date']
+        
+        # Meat
         if meal['meat'] in data['ingredients']:
             for ing in data['ingredients'][meal['meat']]:
-                grocery_list.append({
-                    "name": ing, "dish": meal['meat'], "key": f"{ing}_{meal['meat']}_{date}" 
-                })
+                grocery_list.append({"name": ing, "dish": meal['meat'], "key": f"{ing}_{meal['meat']}_{date_str}"})
         else:
             missing_ing_dishes.append(meal['meat'])
             
-        # Side Ingredients
+        # Side
         if meal['side'] != "No Side":
             if meal['side'] in data['ingredients']:
                 for ing in data['ingredients'][meal['side']]:
-                    grocery_list.append({
-                        "name": ing, "dish": meal['side'], "key": f"{ing}_{meal['side']}_{date}"
-                    })
+                    grocery_list.append({"name": ing, "dish": meal['side'], "key": f"{ing}_{meal['side']}_{date_str}"})
     
     grocery_list.sort(key=lambda x: x['name'])
     return grocery_list, missing_ing_dishes
 
 
-# --- MAIN APP LOGIC ---
+# --- VIEWS (PROFILE vs PLANNER) ---
 
-def main_app(username):
-    # Sidebar
-    st.sidebar.title(f"👤 {username}")
-    if st.sidebar.button("Logout"):
-        st.session_state.current_user = None
+def render_profile_page(username, data):
+    st.header(f"⚙️ Profile: {username}")
+    st.info("Manage your meal database below.")
+    
+    if st.button("← Back to Planner"):
+        st.session_state.app_mode = "Planner"
         st.rerun()
 
-    data = load_user_data(username)
+    st.divider()
 
-    menu = st.radio("Menu", ["Generate", "This Month", "Edit Meals", "Shopping List", "Send Out List"], horizontal=True)
+    tab1, tab2, tab3 = st.tabs(["1. Manage Categories", "2. Manage Sides", "3. Manage Ingredients"])
+    
+    with tab1:
+        cat_to_edit = st.selectbox("Select Category", list(data['categories'].keys()))
+        current_items = ", ".join(data['categories'][cat_to_edit])
+        new_items_str = st.text_area(f"Dishes for {cat_to_edit} (comma separated)", current_items)
+        if st.button("Save Category Items"):
+            new_list = [x.strip() for x in new_items_str.split(",")]
+            data['categories'][cat_to_edit] = new_list
+            save_user_data(username, data)
+            st.success(f"Saved {cat_to_edit}!")
+
+    with tab2:
+        current_sides = ", ".join(data['sides'])
+        new_sides_str = st.text_area("Sides (comma separated)", current_sides)
+        if st.button("Save Sides"):
+            new_list = [x.strip() for x in new_sides_str.split(",")]
+            data['sides'] = new_list
+            save_user_data(username, data)
+            st.success("Sides Updated!")
+            
+    with tab3:
+        all_dishes = []
+        for cat in data['categories']:
+            all_dishes.extend(data['categories'][cat])
+        all_dishes.extend(data['sides'])
+        all_dishes = sorted(list(set(all_dishes))) 
+        
+        selected_dish = st.selectbox("Select Dish to Edit Ingredients", all_dishes)
+        existing_ing = ", ".join(data['ingredients'].get(selected_dish, []))
+        new_ing_str = st.text_area(f"Ingredients needed for {selected_dish}", existing_ing)
+        
+        if st.button(f"Save Ingredients for {selected_dish}"):
+            if new_ing_str.strip():
+                ing_list = [x.strip() for x in new_ing_str.split(",") if x.strip()]
+                data['ingredients'][selected_dish] = ing_list
+            else:
+                if selected_dish in data['ingredients']:
+                    del data['ingredients'][selected_dish]
+            save_user_data(username, data)
+            st.success("Ingredients Saved!")
+
+def render_planner_page(username, data):
+    # Main Menu Radio
+    menu = st.radio("Menu", ["Generate", "This Month", "Shopping List"], horizontal=True)
 
     if menu == "Generate":
         st.header("Generate Schedule")
@@ -297,16 +300,14 @@ def main_app(username):
                 st.dataframe(pd.DataFrame(plan)[['day_name', 'date', 'meat', 'side']])
 
         if st.session_state.confirm_override:
-            st.warning("A list has already been generated for this month. Generating a new list will override the previous list. This can not be undone. Do you wish to continue and override?")
+            st.warning("Warning: Overriding existing plan. Continue?")
             col1, col2 = st.columns(2)
-            
             if col1.button("Yes"):
                 with st.spinner("Overriding..."):
                     plan = generate_schedule(data, username)
                 st.session_state.confirm_override = False 
                 st.success("New Menu Generated!")
                 st.dataframe(pd.DataFrame(plan)[['day_name', 'date', 'meat', 'side']])
-                
             if col2.button("No"):
                 st.session_state.confirm_override = False 
                 st.rerun() 
@@ -319,60 +320,24 @@ def main_app(username):
             df = pd.DataFrame(data['current_month_plan'])
             st.table(df[['day_name', 'date', 'meat', 'side']])
 
-    elif menu == "Edit Meals":
-        st.header("Database Manager")
-        tab1, tab2, tab3 = st.tabs(["1. Manage Categories", "2. Manage Sides", "3. Manage Ingredients"])
-        
-        with tab1:
-            cat_to_edit = st.selectbox("Select Category", list(data['categories'].keys()))
-            current_items = ", ".join(data['categories'][cat_to_edit])
-            new_items_str = st.text_area(f"Dishes for {cat_to_edit} (comma separated)", current_items)
-            if st.button("Save Category Items"):
-                new_list = [x.strip() for x in new_items_str.split(",")]
-                data['categories'][cat_to_edit] = new_list
-                save_user_data(username, data)
-                st.success(f"Saved {cat_to_edit}!")
-
-        with tab2:
-            current_sides = ", ".join(data['sides'])
-            new_sides_str = st.text_area("Sides (comma separated)", current_sides)
-            if st.button("Save Sides"):
-                new_list = [x.strip() for x in new_sides_str.split(",")]
-                data['sides'] = new_list
-                save_user_data(username, data)
-                st.success("Sides Updated!")
-                
-        with tab3:
-            all_dishes = []
-            for cat in data['categories']:
-                all_dishes.extend(data['categories'][cat])
-            all_dishes.extend(data['sides'])
-            all_dishes = sorted(list(set(all_dishes))) 
-            
-            selected_dish = st.selectbox("Select Dish to Edit Ingredients", all_dishes)
-            existing_ing = ", ".join(data['ingredients'].get(selected_dish, []))
-            new_ing_str = st.text_area(f"Ingredients needed for {selected_dish}", existing_ing)
-            
-            if st.button(f"Save Ingredients for {selected_dish}"):
-                if new_ing_str.strip():
-                    ing_list = [x.strip() for x in new_ing_str.split(",") if x.strip()]
-                    data['ingredients'][selected_dish] = ing_list
-                else:
-                    if selected_dish in data['ingredients']:
-                        del data['ingredients'][selected_dish]
-                save_user_data(username, data)
-                st.success("Ingredients Saved!")
-
     elif menu == "Shopping List":
-        st.header("Shopping Checklist")
+        st.header("Shopping Checklist (Next 7 Days)")
         if not data['current_month_plan']:
             st.warning("Please Generate a schedule first.")
         else:
-            grocery_list, _ = calculate_grocery_list(data)
+            grocery_list, missing_ing_dishes = calculate_grocery_list(data)
+            
+            if missing_ing_dishes:
+                # Filter warning to only show missing ingredients for RELEVANT (7-day) meals
+                # To keep it simple, we just show the raw missing list, or suppress it if list is empty
+                unique_missing = list(set(missing_ing_dishes))
+                st.warning(f"⚠️ Missing ingredients for: {', '.join(unique_missing)}")
+                
             if not grocery_list:
-                st.info("No ingredients found.")
+                st.info("No meals found for the next 7 days (or no ingredients defined).")
             else:
                 st.write("Check off items as you shop:")
+                
                 def toggle_item_state(item_key):
                     data['shopping_status'][item_key] = not data['shopping_status'].get(item_key, False)
                     save_user_data(username, data)
@@ -385,37 +350,32 @@ def main_app(username):
                     else:
                         label = f"{item['name']} $\quad \\textcolor{{red}}{{\\small ({item['dish']})}}$"
                     st.checkbox(label, value=is_checked, key=unique_key, on_change=toggle_item_state, args=(unique_key,))
-
-    elif menu == "Send Out List":
-        st.header("Grocery List Export")
-        if not data['current_month_plan']:
-            st.warning("Please Generate a schedule first.")
-        else:
-            unique_grocery_list, missing_ing_dishes = calculate_grocery_list(data)
-            if missing_ing_dishes:
-                unique_missing = list(set(missing_ing_dishes))
-                st.warning(f"⚠️ Missing ingredients for: {', '.join(unique_missing)}")
             
-            msg_header = f"Grocery List for {datetime.date.today().strftime('%B')}:\n"
-            list_lines = []
-            for item in unique_grocery_list:
-                list_lines.append(f"- {item['name']} ({item['dish']})")
-            final_msg = msg_header + "\n".join(list_lines)
+            st.divider()
             
-            st.text_area("Preview:", final_msg, height=300)
-            encoded_msg = urllib.parse.quote(final_msg)
-            st.markdown(f'''<a href="sms:&body={encoded_msg}"><button style="background-color:#4CAF50;color: white;padding: 10px 24px;border: none;border-radius: 4px;cursor: pointer;width: 100%;">📱 Send Grocery List as Text</button></a>''', unsafe_allow_html=True)
+            with st.expander("📤 Export List via SMS"):
+                msg_header = f"Grocery List (Next 7 Days):\n"
+                list_lines = []
+                for item in grocery_list:
+                    list_lines.append(f"- {item['name']} ({item['dish']})")
+                final_msg = msg_header + "\n".join(list_lines)
+                
+                st.text_area("Preview Message:", final_msg, height=200)
+                encoded_msg = urllib.parse.quote(final_msg)
+                st.markdown(f'''<a href="sms:&body={encoded_msg}"><button style="background-color:#4CAF50;color: white;padding: 10px 24px;border: none;border-radius: 4px;cursor: pointer;width: 100%;">📱 Open in Messages</button></a>''', unsafe_allow_html=True)
 
-# --- LOGIN SCREEN ---
+# --- MAIN CONTROLLER ---
 
 st.set_page_config(page_title="Dinner Planner", page_icon="🍽️")
 
 if 'current_user' not in st.session_state:
     st.session_state.current_user = None
 
+if 'app_mode' not in st.session_state:
+    st.session_state.app_mode = "Planner"
+
 if st.session_state.current_user is None:
     st.title("🍽️ Dinner Planner Login")
-    
     tab1, tab2 = st.tabs(["Login", "Create Profile"])
     
     with tab1:
@@ -425,10 +385,11 @@ if st.session_state.current_user is None:
         if st.button("Login"):
             if authenticate(l_user, l_pass):
                 st.session_state.current_user = l_user
+                st.session_state.app_mode = "Planner"
                 st.success(f"Welcome back, {l_user}!")
                 st.rerun()
             else:
-                st.error("Invalid Username or Password. If you don't have a profile, please check the 'Create Profile' tab.")
+                st.error("Invalid Username or Password.")
 
     with tab2:
         st.subheader("Create New Profile")
@@ -440,9 +401,26 @@ if st.session_state.current_user is None:
             else:
                 success, msg = create_user(c_user, c_pass)
                 if success:
-                    st.success("Profile created! Please switch to the Login tab to sign in.")
+                    st.success("Profile created! Please switch to Login.")
                 else:
                     st.error(msg)
+
 else:
-    # Run the main app function, passing the logged-in user
-    main_app(st.session_state.current_user)
+    username = st.session_state.current_user
+    data = load_user_data(username)
+    
+    if st.sidebar.button(f"👤 {username} (Edit Profile)"):
+        st.session_state.app_mode = "Profile"
+        st.rerun()
+        
+    st.sidebar.divider()
+    
+    if st.sidebar.button("Logout"):
+        st.session_state.current_user = None
+        st.session_state.app_mode = "Planner"
+        st.rerun()
+
+    if st.session_state.app_mode == "Profile":
+        render_profile_page(username, data)
+    else:
+        render_planner_page(username, data)
