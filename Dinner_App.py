@@ -22,14 +22,15 @@ def load_data():
             "Taco": ["Beef Tacos", "Chicken Tacos", "Shrimp Tacos", "Beef Nachos", "Chicken Nachos", "Steak Nachos", "Beef Quesdilla", "Chicken Quesdilla", "Steak Quesdilla", "Burrito Bowl", "Taco in a Bag"]
         },
         "sides": ["Rice", "Broccoli", "Side Salad", "Corn", "Small Red Potatoes", "Asparagus", "Green Beans", "Zucchini", "Carrots"],
-        "ingredients": {} 
+        "ingredients": {},
+        "shopping_status": {} 
     }
     
     try:
         with open(DATA_FILE, 'r') as f:
             data = json.load(f)
-            if "ingredients" not in data:
-                data["ingredients"] = {}
+            if "ingredients" not in data: data["ingredients"] = {}
+            if "shopping_status" not in data: data["shopping_status"] = {}
             return data
     except FileNotFoundError:
         return default_data
@@ -80,28 +81,47 @@ def get_special_side_logic(dish_name, category):
 
     return None
 
-def check_constraints(date, category, item, side, data, week_category_counts):
-    # 1. Category max 2 times a week
+def is_category_allowed(category, date, data, current_plan, week_category_counts):
+    # Rule 1: Max 2 times per ISO Week
     week_num = date.isocalendar()[1]
     if week_category_counts.get((week_num, category), 0) >= 2:
         return False
-
-    # 2. History Lookbacks
-    history_limit_item = date - timedelta(weeks=3)
-    history_limit_side = date - timedelta(days=5) 
-
-    all_records = data['history'] + data['current_month_plan']
-
-    for record in all_records:
-        record_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
         
-        if record['meat'] == item and record_date >= history_limit_item and record_date < date:
-            return False
-            
-        if side != "No Side":
-            if record['side'] == side and record_date >= history_limit_side and record_date < date:
+    # Rule 2: 3-Day Cooldown
+    history_limit = date - timedelta(days=3)
+    
+    all_records = data['history'] + current_plan
+    for record in all_records:
+        r_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
+        if r_date >= history_limit and r_date < date:
+            if record['category'] == category:
                 return False
-            
+    return True
+
+def is_meat_allowed(meat, date, data, current_plan):
+    # Rule: 21-Day Cooldown (3 Weeks)
+    history_limit = date - timedelta(days=21)
+    
+    all_records = data['history'] + current_plan
+    for record in all_records:
+        r_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
+        if r_date >= history_limit and r_date < date:
+            if record['meat'] == meat:
+                return False
+    return True
+
+def is_side_allowed(side, date, data, current_plan):
+    # Rule: 5-Day Cooldown (Only for random sides)
+    if side == "No Side": return True
+    
+    history_limit = date - timedelta(days=5)
+    
+    all_records = data['history'] + current_plan
+    for record in all_records:
+        r_date = datetime.datetime.strptime(record['date'], "%Y-%m-%d").date()
+        if r_date >= history_limit and r_date < date:
+            if record['side'] == side:
+                return False
     return True
 
 def generate_schedule(data):
@@ -109,48 +129,57 @@ def generate_schedule(data):
     new_plan = []
     week_category_counts = {} 
     
+    data['shopping_status'] = {} # Reset shopping list
+
     for day in days:
         week_num = day.isocalendar()[1]
         
-        # --- TACO TUESDAY ---
+        # --- 1. SELECT CATEGORY ---
         if day.weekday() == 1: 
             category = "Taco"
-            taco_options = data['categories']['Taco']
-            chosen_meat = random.choice(taco_options)
-        
-        # --- STANDARD DAY ---
         else:
-            valid_cats = [c for c in data['categories'].keys() if c != "Taco"]
-            random.shuffle(valid_cats)
-            category = None
-            for cat in valid_cats:
-                if week_category_counts.get((week_num, cat), 0) < 2:
-                    category = cat
-                    break
-            if not category: category = random.choice(valid_cats)
+            all_cats = [c for c in data['categories'].keys() if c != "Taco"]
+            valid_cats = []
+            
+            for cat in all_cats:
+                if is_category_allowed(cat, day, data, new_plan, week_category_counts):
+                    valid_cats.append(cat)
+            
+            if not valid_cats:
+                valid_cats = [c for c in all_cats if week_category_counts.get((week_num, c), 0) < 2]
+            if not valid_cats:
+                valid_cats = all_cats
 
-            meat_options = data['categories'][category]
+            category = random.choice(valid_cats)
+
+        # --- 2. SELECT MEAT ---
+        meat_options = data['categories'][category]
+        valid_meats = []
+        for m in meat_options:
+            if is_meat_allowed(m, day, data, new_plan):
+                valid_meats.append(m)
+        
+        if not valid_meats:
             chosen_meat = random.choice(meat_options)
+        else:
+            chosen_meat = random.choice(valid_meats)
 
-        # --- DETERMINE SIDE ---
+        # --- 3. SELECT SIDE ---
         special_side = get_special_side_logic(chosen_meat, category)
         
         if special_side:
             chosen_side = special_side
         else:
             side_options = data['sides']
-            chosen_side = random.choice(side_options)
+            valid_sides = []
+            for s in side_options:
+                if is_side_allowed(s, day, data, new_plan):
+                    valid_sides.append(s)
             
-            for _ in range(50):
-                if check_constraints(day, category, chosen_meat, chosen_side, data, week_category_counts):
-                    break
-                chosen_meat = random.choice(data['categories'][category])
-                new_special = get_special_side_logic(chosen_meat, category)
-                if new_special:
-                    chosen_side = new_special
-                    break 
-                else:
-                    chosen_side = random.choice(side_options)
+            if not valid_sides:
+                chosen_side = random.choice(side_options)
+            else:
+                chosen_side = random.choice(valid_sides)
 
         week_category_counts[(week_num, category)] = week_category_counts.get((week_num, category), 0) + 1
         
@@ -166,6 +195,40 @@ def generate_schedule(data):
     save_data(data)
     return new_plan
 
+def calculate_grocery_list(data):
+    grocery_list = []
+    missing_ing_dishes = []
+    
+    if not data['current_month_plan']:
+        return [], []
+
+    for meal in data['current_month_plan']:
+        date = meal['date']
+        
+        # Meat Ingredients
+        if meal['meat'] in data['ingredients']:
+            for ing in data['ingredients'][meal['meat']]:
+                grocery_list.append({
+                    "name": ing,
+                    "dish": meal['meat'],
+                    "key": f"{ing}_{meal['meat']}_{date}" 
+                })
+        else:
+            missing_ing_dishes.append(meal['meat'])
+            
+        # Side Ingredients
+        if meal['side'] != "No Side":
+            if meal['side'] in data['ingredients']:
+                for ing in data['ingredients'][meal['side']]:
+                    grocery_list.append({
+                        "name": ing,
+                        "dish": meal['side'],
+                        "key": f"{ing}_{meal['side']}_{date}"
+                    })
+    
+    grocery_list.sort(key=lambda x: x['name'])
+    return grocery_list, missing_ing_dishes
+
 # --- UI LAYOUT ---
 st.set_page_config(page_title="Dinner Planner", page_icon="🍽️")
 st.title("🍽️ Dinner & Grocery App")
@@ -173,29 +236,24 @@ st.title("🍽️ Dinner & Grocery App")
 data = load_data()
 
 # Navigation
-menu = st.radio("Menu", ["Generate", "This Month", "Edit Meals", "Send Out List"], horizontal=True)
+menu = st.radio("Menu", ["Generate", "This Month", "Edit Meals", "Shopping List", "Send Out List"], horizontal=True)
 
 if menu == "Generate":
     st.header("Generate Schedule")
     st.write(f"Generate meals for the rest of {datetime.date.today().strftime('%B')}.")
     
-    # Initialize Session State for Warning
     if 'confirm_override' not in st.session_state:
         st.session_state.confirm_override = False
 
-    # Main Button
     if st.button("Generate New List", type="primary"):
-        # Check if list exists
         if len(data['current_month_plan']) > 0:
             st.session_state.confirm_override = True
         else:
-            # Safe to generate immediately
             with st.spinner("Cooking up a schedule..."):
                 plan = generate_schedule(data)
             st.success("Menu Generated!")
             st.dataframe(pd.DataFrame(plan)[['day_name', 'date', 'meat', 'side']])
 
-    # Safety Check UI
     if st.session_state.confirm_override:
         st.warning("A list has already been generated for this month. Generating a new list will override the previous list. This can not be undone. Do you wish to continue and override?")
         col1, col2 = st.columns(2)
@@ -203,13 +261,13 @@ if menu == "Generate":
         if col1.button("Yes"):
             with st.spinner("Overriding and cooking..."):
                 plan = generate_schedule(data)
-            st.session_state.confirm_override = False # Reset state
+            st.session_state.confirm_override = False 
             st.success("New Menu Generated!")
             st.dataframe(pd.DataFrame(plan)[['day_name', 'date', 'meat', 'side']])
             
         if col2.button("No"):
-            st.session_state.confirm_override = False # Reset state
-            st.rerun() # Refresh to clear warning
+            st.session_state.confirm_override = False 
+            st.rerun() 
 
 elif menu == "This Month":
     st.header("This Month's Schedule")
@@ -266,36 +324,64 @@ elif menu == "Edit Meals":
             save_data(data)
             st.success("Ingredients Saved!")
 
+elif menu == "Shopping List":
+    st.header("Shopping Checklist")
+    
+    if not data['current_month_plan']:
+        st.warning("Please Generate a schedule first.")
+    else:
+        grocery_list, _ = calculate_grocery_list(data)
+        
+        if not grocery_list:
+            st.info("No ingredients found. Go to 'Edit Meals' -> 'Manage Ingredients' to add them.")
+        else:
+            st.write("Check off items as you shop:")
+            
+            def toggle_item_state(item_key):
+                data['shopping_status'][item_key] = not data['shopping_status'].get(item_key, False)
+                save_data(data)
+
+            for item in grocery_list:
+                unique_key = item['key']
+                is_checked = data['shopping_status'].get(unique_key, False)
+                
+                # Visual Formatting
+                # If Checked: Standard Strikethrough (Gray)
+                # If Unchecked: Name + Red Small Text for Dish context
+                if is_checked:
+                    label = f"~~{item['name']} ({item['dish']})~~"
+                else:
+                    # Using LaTeX for Color (Red) and Size (Small)
+                    # \quad adds a small space
+                    label = f"{item['name']} $\quad \\textcolor{{red}}{{\\small ({item['dish']})}}$"
+                
+                st.checkbox(
+                    label, 
+                    value=is_checked, 
+                    key=unique_key, 
+                    on_change=toggle_item_state,
+                    args=(unique_key,)
+                )
+
 elif menu == "Send Out List":
     st.header("Grocery List Export")
     
     if not data['current_month_plan']:
         st.warning("Please Generate a schedule first.")
     else:
-        st.write("Aggregating ingredients based on the current schedule...")
-        
-        grocery_list = []
-        missing_ing_dishes = []
-        
-        for meal in data['current_month_plan']:
-            if meal['meat'] in data['ingredients']:
-                grocery_list.extend(data['ingredients'][meal['meat']])
-            else:
-                missing_ing_dishes.append(meal['meat'])
-                
-            if meal['side'] != "No Side":
-                if meal['side'] in data['ingredients']:
-                    grocery_list.extend(data['ingredients'][meal['side']])
-        
-        unique_grocery_list = sorted(list(set(grocery_list)))
+        unique_grocery_list, missing_ing_dishes = calculate_grocery_list(data)
         
         if missing_ing_dishes:
             unique_missing = list(set(missing_ing_dishes))
             st.warning(f"⚠️ The following Main Dishes have no ingredients defined: {', '.join(unique_missing)}")
             
         msg_header = f"Grocery List for {datetime.date.today().strftime('%B')}:\n"
-        msg_body = "\n".join([f"- {item}" for item in unique_grocery_list])
-        final_msg = msg_header + msg_body
+        
+        list_lines = []
+        for item in unique_grocery_list:
+            list_lines.append(f"- {item['name']} ({item['dish']})")
+            
+        final_msg = msg_header + "\n".join(list_lines)
         
         st.text_area("Preview:", final_msg, height=300)
         

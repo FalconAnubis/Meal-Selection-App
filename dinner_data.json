@@ -4,71 +4,71 @@
         {
             "date": "2025-12-22",
             "day_name": "Monday",
-            "category": "Pork",
-            "meat": "Pork Chops",
-            "side": "Corn"
+            "category": "Chicken",
+            "meat": "Honey Garlic Chicken",
+            "side": "Small Red Potatoes"
         },
         {
             "date": "2025-12-23",
             "day_name": "Tuesday",
             "category": "Taco",
-            "meat": "Steak Nachos",
-            "side": "No Side"
+            "meat": "Taco in a Bag",
+            "side": "Chips"
         },
         {
             "date": "2025-12-24",
             "day_name": "Wednesday",
-            "category": "Pork",
-            "meat": "Hotdogs",
-            "side": "Corn"
+            "category": "Beef",
+            "meat": "Burgers",
+            "side": "Fries"
         },
         {
             "date": "2025-12-25",
             "day_name": "Thursday",
-            "category": "Chicken",
-            "meat": "Chicken Caesar",
+            "category": "Pork",
+            "meat": "Pork Chops",
             "side": "Zucchini"
         },
         {
             "date": "2025-12-26",
             "day_name": "Friday",
-            "category": "Beef",
-            "meat": "Burgers",
-            "side": "Fries"
+            "category": "Others",
+            "meat": "Shrimp",
+            "side": "Carrots"
         },
         {
             "date": "2025-12-27",
             "day_name": "Saturday",
-            "category": "Beef",
-            "meat": "Steak and Chimichurri",
-            "side": "Broccoli"
+            "category": "Chicken",
+            "meat": "Chicken Noodle Soup",
+            "side": "Garlic Bread"
         },
         {
             "date": "2025-12-28",
             "day_name": "Sunday",
-            "category": "Others",
-            "meat": "Salmon",
-            "side": "Carrots"
+            "category": "Veggie",
+            "meat": "Fondue",
+            "side": "Ham, Broccoli, Green Apples, and Mountain Bread"
         },
         {
             "date": "2025-12-29",
             "day_name": "Monday",
             "category": "Beef",
-            "meat": "Burgers",
-            "side": "Fries"
+            "meat": "Meatloaf",
+            "side": "Asparagus"
         },
         {
             "date": "2025-12-30",
             "day_name": "Tuesday",
             "category": "Taco",
-            "meat": "Beef Quesdilla",
+            "meat": "Chicken Tacos",
             "side": "No Side"
         },
         {
             "date": "2025-12-31",
             "day_name": "Wednesday",
-            "category": "Veggie",
-            "meat": "Subway",
+            "category": "Chicken",
+            "meat": "Chicken Stir-Fry",
             "side": "No Side"
         }
     ],
@@ -524,5 +524,6 @@
         "Zucchini": [
             "Zucchini"
         ]
-    }
+    },
+    "shopping_status": {}
 }
