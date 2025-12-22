@@ -15,10 +15,11 @@ PROFILE_DIR = 'profiles'
 if not os.path.exists(PROFILE_DIR):
     os.makedirs(PROFILE_DIR)
 
-# --- SECURITY & AUTH FUNCTIONS ---
+# --- SECURITY & AUTH FUNCTIONS (UPDATED FOR PIN) ---
 
-def hash_password(password):
-    return hashlib.sha256(str.encode(password)).hexdigest()
+def hash_pin(pin):
+    """Hashes a numeric PIN."""
+    return hashlib.sha256(str.encode(pin)).hexdigest()
 
 def load_user_db():
     try:
@@ -31,18 +32,27 @@ def save_user_db(db):
     with open(USER_DB_FILE, 'w') as f:
         json.dump(db, f, indent=4)
 
-def authenticate(username, password):
+def authenticate_pin(username, pin_input):
     db = load_user_db()
     if username in db:
-        if db[username] == hash_password(password):
+        # Check against the stored PIN hash
+        stored_hash = db[username]['pin_hash']
+        if stored_hash == hash_pin(pin_input):
             return True
     return False
 
-def create_user(username, password):
+def create_user(username, pin):
     db = load_user_db()
     if username in db:
-        return False, "Username already exists."
-    db[username] = hash_password(password)
+        return False, "User already exists."
+    
+    # Assign a random avatar emoji for the profile button
+    avatars = ["👨‍🍳", "👩‍🍳", "🦁", "🐯", "🤖", "👽", "🥑", "🌮"]
+    
+    db[username] = {
+        "pin_hash": hash_pin(pin),
+        "avatar": random.choice(avatars)
+    }
     save_user_db(db)
     
     default_data = get_default_data()
@@ -52,7 +62,7 @@ def create_user(username, password):
         
     return True, "User created successfully."
 
-# --- DATA MANAGEMENT ---
+# --- DATA MANAGEMENT (UNCHANGED) ---
 
 def get_default_data():
     return {
@@ -89,7 +99,7 @@ def save_user_data(username, data):
     with open(user_file, 'w') as f:
         json.dump(data, f, indent=4)
 
-# --- LOGIC HELPERS ---
+# --- LOGIC HELPERS (UNCHANGED) ---
 
 def get_days_remaining_in_month():
     today = datetime.date.today()
@@ -185,26 +195,17 @@ def generate_schedule(data, username):
     return new_plan
 
 def calculate_grocery_list(data):
-    """
-    Calculates grocery list only for meals occurring within the next 7 days.
-    """
     grocery_list = []
     missing_ing_dishes = []
     if not data['current_month_plan']: return [], []
 
-    # --- NEW LOGIC: Define the 7-day Window ---
     today = datetime.date.today()
     cutoff_date = today + datetime.timedelta(days=7)
 
     for meal in data['current_month_plan']:
-        # Convert meal string date to object
         meal_date_obj = datetime.datetime.strptime(meal['date'], "%Y-%m-%d").date()
-        
-        # --- FILTER: Check if meal is within the window (Today -> Today+7) ---
-        if meal_date_obj < today:
-            continue # Skip past meals
-        if meal_date_obj > cutoff_date:
-            continue # Skip meals further than a week out
+        if meal_date_obj < today: continue 
+        if meal_date_obj > cutoff_date: continue
 
         date_str = meal['date']
         
@@ -280,7 +281,6 @@ def render_profile_page(username, data):
             st.success("Ingredients Saved!")
 
 def render_planner_page(username, data):
-    # Main Menu Radio
     menu = st.radio("Menu", ["Generate", "This Month", "Shopping List"], horizontal=True)
 
     if menu == "Generate":
@@ -328,8 +328,6 @@ def render_planner_page(username, data):
             grocery_list, missing_ing_dishes = calculate_grocery_list(data)
             
             if missing_ing_dishes:
-                # Filter warning to only show missing ingredients for RELEVANT (7-day) meals
-                # To keep it simple, we just show the raw missing list, or suppress it if list is empty
                 unique_missing = list(set(missing_ing_dishes))
                 st.warning(f"⚠️ Missing ingredients for: {', '.join(unique_missing)}")
                 
@@ -352,7 +350,6 @@ def render_planner_page(username, data):
                     st.checkbox(label, value=is_checked, key=unique_key, on_change=toggle_item_state, args=(unique_key,))
             
             st.divider()
-            
             with st.expander("📤 Export List via SMS"):
                 msg_header = f"Grocery List (Next 7 Days):\n"
                 list_lines = []
@@ -364,62 +361,111 @@ def render_planner_page(username, data):
                 encoded_msg = urllib.parse.quote(final_msg)
                 st.markdown(f'''<a href="sms:&body={encoded_msg}"><button style="background-color:#4CAF50;color: white;padding: 10px 24px;border: none;border-radius: 4px;cursor: pointer;width: 100%;">📱 Open in Messages</button></a>''', unsafe_allow_html=True)
 
-# --- MAIN CONTROLLER ---
+# --- MAIN CONTROLLER (UPDATED FOR ATM STYLE) ---
 
 st.set_page_config(page_title="Dinner Planner", page_icon="🍽️")
 
+# Session State Initialization
 if 'current_user' not in st.session_state:
     st.session_state.current_user = None
-
 if 'app_mode' not in st.session_state:
     st.session_state.app_mode = "Planner"
+if 'selected_user_for_login' not in st.session_state:
+    st.session_state.selected_user_for_login = None
+
+# --- AUTHENTICATION FLOW ---
 
 if st.session_state.current_user is None:
-    st.title("🍽️ Dinner Planner Login")
-    tab1, tab2 = st.tabs(["Login", "Create Profile"])
+    st.title("🍽️ Who is cooking?")
     
-    with tab1:
-        st.subheader("Login")
-        l_user = st.text_input("Username", key="l_user")
-        l_pass = st.text_input("Password", type="password", key="l_pass")
-        if st.button("Login"):
-            if authenticate(l_user, l_pass):
-                st.session_state.current_user = l_user
-                st.session_state.app_mode = "Planner"
-                st.success(f"Welcome back, {l_user}!")
-                st.rerun()
-            else:
-                st.error("Invalid Username or Password.")
+    users_db = load_user_db()
+    
+    # 1. IF NO USER SELECTED YET: SHOW PROFILE GRID
+    if st.session_state.selected_user_for_login is None:
+        
+        # Display existing users as buttons
+        if users_db:
+            # Create columns for a grid layout
+            cols = st.columns(3)
+            for i, (u_name, u_data) in enumerate(users_db.items()):
+                # Use modulo to cycle through columns
+                with cols[i % 3]:
+                    # Large Button with Avatar and Name
+                    avatar = u_data.get('avatar', '👤')
+                    if st.button(f"{avatar}\n\n{u_name}", use_container_width=True, key=f"btn_{u_name}"):
+                        st.session_state.selected_user_for_login = u_name
+                        st.rerun()
+        else:
+            st.info("No profiles found. Create the first one below!")
 
-    with tab2:
-        st.subheader("Create New Profile")
-        c_user = st.text_input("Choose Username", key="c_user")
-        c_pass = st.text_input("Choose Password", type="password", key="c_pass")
-        if st.button("Create Profile"):
-            if not c_user or not c_pass:
-                st.warning("Please fill out both fields.")
-            else:
-                success, msg = create_user(c_user, c_pass)
-                if success:
-                    st.success("Profile created! Please switch to Login.")
+        st.divider()
+        
+        # "Add User" Section (Always visible at bottom)
+        with st.expander("➕ Add New Profile"):
+            new_user = st.text_input("Name")
+            new_pin = st.text_input("Create 4-Digit PIN", type="password", max_chars=4)
+            if st.button("Create Profile"):
+                if new_user and len(new_pin) == 4 and new_pin.isdigit():
+                    success, msg = create_user(new_user, new_pin)
+                    if success:
+                        st.success(f"Created {new_user}! Select them above.")
+                        st.rerun()
+                    else:
+                        st.error(msg)
                 else:
-                    st.error(msg)
+                    st.warning("Please enter a name and a 4-digit numeric PIN.")
+
+    # 2. IF USER SELECTED: SHOW PIN PAD
+    else:
+        target_user = st.session_state.selected_user_for_login
+        user_avatar = users_db[target_user].get('avatar', '👤')
+        
+        st.markdown(f"<h2 style='text-align: center;'>{user_avatar} Hello, {target_user}</h2>", unsafe_allow_html=True)
+        st.write("Enter your PIN to unlock your recipes.")
+        
+        # PIN Input
+        pin_attempt = st.text_input("PIN", type="password", max_chars=4, key="login_pin")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔓 Unlock", type="primary", use_container_width=True):
+                if authenticate_pin(target_user, pin_attempt):
+                    st.session_state.current_user = target_user
+                    st.session_state.selected_user_for_login = None # Clear selection
+                    st.session_state.app_mode = "Planner"
+                    st.success("Success!")
+                    st.rerun()
+                else:
+                    st.error("Incorrect PIN")
+        
+        with col2:
+            if st.button("⬅️ Switch User", use_container_width=True):
+                st.session_state.selected_user_for_login = None
+                st.rerun()
+
+# --- MAIN APP FLOW ---
 
 else:
+    # User is Logged In
     username = st.session_state.current_user
     data = load_user_data(username)
     
-    if st.sidebar.button(f"👤 {username} (Edit Profile)"):
+    # Sidebar Navigation
+    st.sidebar.title(f"Kitchen: {username}")
+    
+    if st.sidebar.button(f"👤 Edit Profile / Ingredients"):
         st.session_state.app_mode = "Profile"
         st.rerun()
         
     st.sidebar.divider()
     
-    if st.sidebar.button("Logout"):
+    # LOGOUT becomes "Lock Profile"
+    if st.sidebar.button("🔒 Lock Profile"):
         st.session_state.current_user = None
         st.session_state.app_mode = "Planner"
         st.rerun()
 
+    # Render Active Page
     if st.session_state.app_mode == "Profile":
         render_profile_page(username, data)
     else:
