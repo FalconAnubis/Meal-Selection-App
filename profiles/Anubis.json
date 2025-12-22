@@ -1,0 +1,529 @@
+{
+    "history": [],
+    "current_month_plan": [
+        {
+            "date": "2025-12-22",
+            "day_name": "Monday",
+            "category": "Beef",
+            "meat": "Burgers",
+            "side": "Fries"
+        },
+        {
+            "date": "2025-12-23",
+            "day_name": "Tuesday",
+            "category": "Taco",
+            "meat": "Burrito Bowl",
+            "side": "No Side"
+        },
+        {
+            "date": "2025-12-24",
+            "day_name": "Wednesday",
+            "category": "Veggie",
+            "meat": "Homemade Pizza",
+            "side": "No Side"
+        },
+        {
+            "date": "2025-12-25",
+            "day_name": "Thursday",
+            "category": "Others",
+            "meat": "Salmon",
+            "side": "Corn"
+        },
+        {
+            "date": "2025-12-26",
+            "day_name": "Friday",
+            "category": "Beef",
+            "meat": "Smash Burgers",
+            "side": "Tater Tots"
+        },
+        {
+            "date": "2025-12-27",
+            "day_name": "Saturday",
+            "category": "Pork",
+            "meat": "Sausage Links",
+            "side": "Rice"
+        },
+        {
+            "date": "2025-12-28",
+            "day_name": "Sunday",
+            "category": "Veggie",
+            "meat": "Subway",
+            "side": "No Side"
+        },
+        {
+            "date": "2025-12-29",
+            "day_name": "Monday",
+            "category": "Others",
+            "meat": "Scrambled Eggs",
+            "side": "Side Salad"
+        },
+        {
+            "date": "2025-12-30",
+            "day_name": "Tuesday",
+            "category": "Taco",
+            "meat": "Taco in a Bag",
+            "side": "Chips"
+        },
+        {
+            "date": "2025-12-31",
+            "day_name": "Wednesday",
+            "category": "Pork",
+            "meat": "Grilled Ham/Cheese",
+            "side": "Asparagus"
+        }
+    ],
+    "categories": {
+        "Chicken": [
+            "Chicken Wings",
+            "Honey Garlic Chicken",
+            "Chicken Tenders",
+            "Chicken Stir-Fry",
+            "Chicken Caesar",
+            "Adobo",
+            "Chicken Noodle Soup",
+            "Creamy Lemon Butter Chicken",
+            "Arroz Con Pollo"
+        ],
+        "Beef": [
+            "Korean Beef Rice Bowl",
+            "Burgers",
+            "Meatloaf",
+            "Beef Sliders",
+            "Smash Burgers",
+            "Steak Dinner",
+            "Meatballs",
+            "Steak and Chimichurri"
+        ],
+        "Pork": [
+            "Pork Chops",
+            "Pulled Pork",
+            "Grilled Ham/Cheese",
+            "Sausage Links",
+            "Ribs",
+            "Hotdogs",
+            "Publix Deli"
+        ],
+        "Others": [
+            "Salmon",
+            "Tilapia",
+            "Shrimp",
+            "Scrambled Eggs",
+            "Omelets",
+            "Egg Salad Sandwich",
+            "Mac and Cheese"
+        ],
+        "Veggie": [
+            "Salad",
+            "Veggie Stir-Fry",
+            "Chic-Pea Alfredo",
+            "Homemade Pizza",
+            "Fondue",
+            "Subway",
+            "Dine Out Somewhere"
+        ],
+        "Taco": [
+            "Beef Tacos",
+            "Chicken Tacos",
+            "Shrimp Tacos",
+            "Beef Nachos",
+            "Chicken Nachos",
+            "Steak Nachos",
+            "Beef Quesdilla",
+            "Chicken Quesdilla",
+            "Steak Quesdilla",
+            "Burrito Bowl",
+            "Taco in a Bag"
+        ]
+    },
+    "sides": [
+        "Rice",
+        "Broccoli",
+        "Side Salad",
+        "Corn",
+        "Small Red Potatoes",
+        "Asparagus",
+        "Green Beans",
+        "Zucchini",
+        "Carrots"
+    ],
+    "ingredients": {
+        "Adobo": [
+            "Rice",
+            "Chicken Breast",
+            "Broccoli",
+            "Yellow Onion",
+            "Soy Sauce",
+            "Garlic"
+        ],
+        "Arroz Con Pollo": [
+            "Rice",
+            "Chicken Drums"
+        ],
+        "Asparagus": [
+            "Asparagus"
+        ],
+        "Beef Nachos": [
+            "Scoops",
+            "Ground Beef",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa"
+        ],
+        "Beef Quesdilla": [
+            "Tortillas",
+            "Ground Beef",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa"
+        ],
+        "Beef Sliders": [
+            "Hawaiian Rolls",
+            "Ground Beef",
+            "American Cheese (Sliced)",
+            "Ketchup",
+            "Mayo",
+            "Tomato",
+            "Lettuce"
+        ],
+        "Beef Tacos": [
+            "Tortillas",
+            "Ground Beef",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa",
+            "Red Onion"
+        ],
+        "Broccoli": [
+            "Broccoli"
+        ],
+        "Burgers": [
+            "Burger Buns",
+            "Burger Patties",
+            "American Cheese (Sliced)",
+            "Ketchup",
+            "Mayo",
+            "Tomato",
+            "Lettuce"
+        ],
+        "Burrito Bowl": [
+            "Rice",
+            "Chicken Breast",
+            "Mexican Cheese",
+            "Black Beans",
+            "Red Onion",
+            "Sour Cream",
+            "Tri-Peppers",
+            "Corn"
+        ],
+        "Carrots": [
+            "Carrots"
+        ],
+        "Chic-Pea Alfredo": [
+            "Chickpeas",
+            "Broccoli",
+            "Heavy Cream",
+            "Parmesan Cheese",
+            "Shallot",
+            "Lemon"
+        ],
+        "Chicken Caesar": [
+            "Chicken Breast",
+            "Caesar Salad Kit",
+            "Parmesan Cheese"
+        ],
+        "Chicken Nachos": [
+            "Scoops",
+            "Chicken Breast",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa",
+            "Tomatoes"
+        ],
+        "Chicken Noodle Soup": [
+            "Chicken Breast",
+            "Celery",
+            "Carrots",
+            "Egg Noodles",
+            "Chicken Broth",
+            "Yellow Onion",
+            "Parmesan Cheese"
+        ],
+        "Chicken Quesdilla": [
+            "Tortillas",
+            "Chicken Breast",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa",
+            "Red Onion"
+        ],
+        "Chicken Stir-Fry": [
+            "Rice",
+            "Peas",
+            "Carrots",
+            "Chicken Breast",
+            "Egg",
+            "Soy Sauce",
+            "Sugar"
+        ],
+        "Chicken Tacos": [
+            "Tortillas",
+            "Chicken Breast",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa",
+            "Red Onion"
+        ],
+        "Chicken Tenders": [
+            "Chicken Breast Strips",
+            "Bread Crumbs",
+            "Flour",
+            "Egg"
+        ],
+        "Chicken Wings": [
+            "Chicken Breast Strips",
+            "Bread Crumbs",
+            "Flour",
+            "Egg"
+        ],
+        "Corn": [
+            "Corn"
+        ],
+        "Creamy Lemon Butter Chicken": [
+            "Chicken Thighs",
+            "Chicken Broth",
+            "Heavy Cream",
+            "Parmesan Cheese",
+            "Spinach"
+        ],
+        "Dine Out Somewhere": [
+            "[Random Restaurant]"
+        ],
+        "Egg Salad Sandwich": [
+            "Bread",
+            "Eggs",
+            "Mayo"
+        ],
+        "Fondue": [
+            "Ham",
+            "Steak",
+            "Broccoli",
+            "Mountain Bread",
+            "Green Apples",
+            "Foster's Beer Can",
+            "Worcestershire",
+            "Ground Mustard",
+            "8 Cups of Cheddar Cheese"
+        ],
+        "Green Beans": [
+            "Green Beans"
+        ],
+        "Grilled Ham/Cheese": [
+            "Bread",
+            "Cheddar Cheese (Sliced)",
+            "Ham"
+        ],
+        "Homemade Pizza": [
+            "Pizza Dough",
+            "Pizza Sauce",
+            "Pepperoni",
+            "Mozzarella Cheese"
+        ],
+        "Honey Garlic Chicken": [
+            "Chicken Thighs",
+            "Brown Sugar",
+            "Honey"
+        ],
+        "Hotdogs": [
+            "Hotdogs",
+            "Hotdog Buns",
+            "Ketchup"
+        ],
+        "Korean Beef Rice Bowl": [
+            "Rib-Eye Shavings",
+            "Rice",
+            "Brown Sugar",
+            "Low Sodium Soy Sauce",
+            "Green Onion",
+            "Ginger",
+            "Sesame Oil"
+        ],
+        "Mac and Cheese": [
+            "Mac and Cheese",
+            "Milk",
+            "Butter"
+        ],
+        "Meatballs": [
+            "Ground Beef",
+            "Breadcrumbs",
+            "Eggs",
+            "Parmesan",
+            "Onion",
+            "Tomato Paste",
+            "Tomato Sauce",
+            "Whole Wheat Pasta",
+            "Italian Seasonings"
+        ],
+        "Meatloaf": [
+            "Lean Ground Beef",
+            "White Onion",
+            "Minced Garlic",
+            "Milk",
+            "Breadcrumbs",
+            "Eggs",
+            "Italian Seasoning"
+        ],
+        "Omelets": [
+            "Eggs",
+            "Minced Tomatoes",
+            "Shredded Cheddar Cheese",
+            "Spanish",
+            "Sour Cream"
+        ],
+        "Pork Chops": [
+            "Pork Chops",
+            "Brown Sugar"
+        ],
+        "Publix Deli": [
+            "[Subs & Deli]"
+        ],
+        "Pulled Pork": [
+            "Pork Shoulder",
+            "Brown Sugar",
+            "Can of Coca-Cola"
+        ],
+        "Ribs": [
+            "Rack of Ribs",
+            "Brown Sugar"
+        ],
+        "Rice": [
+            "Rice"
+        ],
+        "Salad": [
+            "Lettuce",
+            "Tomatoes",
+            "Cucumbers",
+            "Black Olives",
+            "Carrot Match Sticks",
+            "Salad Dressings"
+        ],
+        "Salmon": [
+            "Salmon",
+            "Brown Sugar",
+            "Soy Sauce"
+        ],
+        "Sausage Links": [
+            "Sausage"
+        ],
+        "Scrambled Eggs": [
+            "Eggs",
+            "Sliced American Cheese"
+        ],
+        "Shrimp": [
+            "White Shrimp"
+        ],
+        "Shrimp Tacos": [
+            "Tortillas",
+            "Shrimp",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa",
+            "Red Onion"
+        ],
+        "Side Salad": [
+            "Caesar Salad Kit"
+        ],
+        "Small Red Potatoes": [
+            "Small Red Potatoes"
+        ],
+        "Smash Burgers": [
+            "Burger Buns",
+            "Ground Beef",
+            "American Cheese (Sliced)",
+            "Ketchup",
+            "Mayo",
+            "Tomato",
+            "Lettuce"
+        ],
+        "Steak Dinner": [
+            "Steak",
+            "Butter",
+            "Garlic Cloves"
+        ],
+        "Steak Nachos": [
+            "Scoops",
+            "Ground Steak",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa",
+            "Red Onion"
+        ],
+        "Steak Quesdilla": [
+            "Tortillas",
+            "Ground Steak",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa",
+            "Red Onion"
+        ],
+        "Steak and Chimichurri": [
+            "Outside Skirt Steak",
+            "White Onion",
+            "Soy Sauce",
+            "Orange Juice",
+            "Cilantro",
+            "Oregano",
+            "Parsley",
+            "Minced Garlic",
+            "Red Wine Vinegar",
+            "Lemon Juice",
+            "Red Onion",
+            "Olive Oil",
+            "Lime Juice"
+        ],
+        "Subway": [
+            "[Subs]"
+        ],
+        "Taco in a Bag": [
+            "Bag of Chips",
+            "Ground Beef",
+            "Mexican Cheese",
+            "Pico",
+            "Sour Cream",
+            "Salsa",
+            "Red Onion"
+        ],
+        "Tilapia": [
+            "Tilapia",
+            "Oregano",
+            "Thyme",
+            "Lemon Juice",
+            "Parsley",
+            "Minced Garlic",
+            "Butter"
+        ],
+        "Veggie Stir-Fry": [
+            "Rice",
+            "Peas",
+            "Carrots",
+            "Zucchini",
+            "Squash",
+            "Egg",
+            "Soy Sauce",
+            "Sugar",
+            "Broccoli"
+        ],
+        "Zucchini": [
+            "Zucchini"
+        ]
+    },
+    "shopping_status": {}
+}
