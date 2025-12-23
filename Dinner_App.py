@@ -523,16 +523,16 @@ else:
     data = load_user_data(username)
     
     # Sidebar Navigation
-    st.sidebar.title(f"Kitchen: {username}")
+    st.sidebar.title(f"Profile: {username}")
     
-    if st.sidebar.button(f"👤 Edit Profile / Ingredients"):
+    if st.sidebar.button(f"👤 Edit Profile / Meals"):
         st.session_state.app_mode = "Profile"
         st.rerun()
         
     st.sidebar.divider()
     
     # LOGOUT becomes "Lock Profile"
-    if st.sidebar.button("🔒 Lock Profile"):
+    if st.sidebar.button("🔒 Logout"):
         st.session_state.current_user = None
         st.session_state.app_mode = "Planner"
         st.rerun()
