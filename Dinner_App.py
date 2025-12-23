@@ -15,7 +15,7 @@ PROFILE_DIR = 'profiles'
 if not os.path.exists(PROFILE_DIR):
     os.makedirs(PROFILE_DIR)
 
-# --- SECURITY & AUTH FUNCTIONS (UPDATED FOR PIN) ---
+# --- SECURITY & AUTH FUNCTIONS ---
 
 def hash_pin(pin):
     """Hashes a numeric PIN."""
@@ -62,7 +62,40 @@ def create_user(username, pin):
         
     return True, "User created successfully."
 
-# --- DATA MANAGEMENT (UNCHANGED) ---
+def update_user_identity(old_name, new_name, new_avatar):
+    """Handles renaming a user and updating their avatar safely."""
+    db = load_user_db()
+    
+    # 1. Validation: If name is changing, ensure new name isn't taken
+    if new_name != old_name and new_name in db:
+        return False, "Username already taken."
+    
+    # 2. Prepare Data
+    if old_name not in db:
+        return False, "User not found."
+        
+    user_data = db[old_name]
+    user_data['avatar'] = new_avatar
+    
+    # 3. Handle Name Change (Rename Keys and Files)
+    if new_name != old_name:
+        # Create new key, delete old key
+        db[new_name] = user_data
+        del db[old_name]
+        
+        # Rename the physical .json file
+        old_file = os.path.join(PROFILE_DIR, f"{old_name}.json")
+        new_file = os.path.join(PROFILE_DIR, f"{new_name}.json")
+        if os.path.exists(old_file):
+            os.rename(old_file, new_file)
+    else:
+        # Just update the avatar in the existing key
+        db[old_name] = user_data
+            
+    save_user_db(db)
+    return True, "Profile Updated!"
+
+# --- DATA MANAGEMENT ---
 
 def get_default_data():
     return {
@@ -99,7 +132,7 @@ def save_user_data(username, data):
     with open(user_file, 'w') as f:
         json.dump(data, f, indent=4)
 
-# --- LOGIC HELPERS (UNCHANGED) ---
+# --- LOGIC HELPERS ---
 
 def get_days_remaining_in_month():
     today = datetime.date.today()
@@ -229,21 +262,53 @@ def calculate_grocery_list(data):
 # --- VIEWS (PROFILE vs PLANNER) ---
 
 def render_profile_page(username, data):
-    st.header(f"⚙️ Profile: {username}")
-    st.info("Manage your meal database below.")
+    # --- SECTION 1: IDENTITY (Name & Avatar) ---
+    st.header(f"⚙️ Profile Settings")
     
-    if st.button("← Back to Planner"):
-        st.session_state.app_mode = "Planner"
-        st.rerun()
+    # Load current user settings to pre-fill the form
+    users_db = load_user_db()
+    current_avatar = users_db[username].get('avatar', '👤') if username in users_db else '👤'
+    
+    with st.container(border=True):
+        st.subheader("My Identity")
+        col1, col2 = st.columns([1, 3])
+        
+        with col1:
+            # Avatar Selection
+            avatars = ["👨‍🍳", "👩‍🍳", "🦁", "🐯", "🤖", "👽", "🥑", "🌮", "🥓", "🦄"]
+            # find index safely
+            default_index = avatars.index(current_avatar) if current_avatar in avatars else 0
+            new_avatar = st.selectbox("Avatar", avatars, index=default_index)
+        
+        with col2:
+            # Name Edit
+            new_name = st.text_input("Display Name", value=username)
+            
+        if st.button("💾 Save Profile Changes"):
+            if new_name.strip():
+                success, msg = update_user_identity(username, new_name, new_avatar)
+                if success:
+                    st.success(msg)
+                    # Update session state if name changed so the app doesn't crash
+                    st.session_state.current_user = new_name
+                    st.rerun()
+                else:
+                    st.error(msg)
+            else:
+                st.warning("Name cannot be empty.")
 
     st.divider()
+
+    # --- SECTION 2: MEAL DATABASE ---
+    st.subheader("My Kitchen Database")
+    st.info("Edit your personal collection of foods here.")
 
     tab1, tab2, tab3 = st.tabs(["1. Manage Categories", "2. Manage Sides", "3. Manage Ingredients"])
     
     with tab1:
         cat_to_edit = st.selectbox("Select Category", list(data['categories'].keys()))
         current_items = ", ".join(data['categories'][cat_to_edit])
-        new_items_str = st.text_area(f"Dishes for {cat_to_edit} (comma separated)", current_items)
+        new_items_str = st.text_area(f"Dishes for {cat_to_edit} (comma separated)", current_items, height=150)
         if st.button("Save Category Items"):
             new_list = [x.strip() for x in new_items_str.split(",")]
             data['categories'][cat_to_edit] = new_list
@@ -252,7 +317,7 @@ def render_profile_page(username, data):
 
     with tab2:
         current_sides = ", ".join(data['sides'])
-        new_sides_str = st.text_area("Sides (comma separated)", current_sides)
+        new_sides_str = st.text_area("Sides (comma separated)", current_sides, height=150)
         if st.button("Save Sides"):
             new_list = [x.strip() for x in new_sides_str.split(",")]
             data['sides'] = new_list
@@ -270,15 +335,22 @@ def render_profile_page(username, data):
         existing_ing = ", ".join(data['ingredients'].get(selected_dish, []))
         new_ing_str = st.text_area(f"Ingredients needed for {selected_dish}", existing_ing)
         
-        if st.button(f"Save Ingredients for {selected_dish}"):
-            if new_ing_str.strip():
-                ing_list = [x.strip() for x in new_ing_str.split(",") if x.strip()]
-                data['ingredients'][selected_dish] = ing_list
-            else:
-                if selected_dish in data['ingredients']:
-                    del data['ingredients'][selected_dish]
-            save_user_data(username, data)
-            st.success("Ingredients Saved!")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button(f"Save Ingredients"):
+                if new_ing_str.strip():
+                    ing_list = [x.strip() for x in new_ing_str.split(",") if x.strip()]
+                    data['ingredients'][selected_dish] = ing_list
+                else:
+                    if selected_dish in data['ingredients']:
+                        del data['ingredients'][selected_dish]
+                save_user_data(username, data)
+                st.success("Ingredients Saved!")
+        
+        with col_b:
+             if st.button("← Back to Planner", use_container_width=True):
+                st.session_state.app_mode = "Planner"
+                st.rerun()
 
 def render_planner_page(username, data):
     menu = st.radio("Menu", ["Generate", "This Month", "Shopping List"], horizontal=True)
@@ -361,7 +433,7 @@ def render_planner_page(username, data):
                 encoded_msg = urllib.parse.quote(final_msg)
                 st.markdown(f'''<a href="sms:&body={encoded_msg}"><button style="background-color:#4CAF50;color: white;padding: 10px 24px;border: none;border-radius: 4px;cursor: pointer;width: 100%;">📱 Open in Messages</button></a>''', unsafe_allow_html=True)
 
-# --- MAIN CONTROLLER (UPDATED FOR ATM STYLE) ---
+# --- MAIN CONTROLLER ---
 
 st.set_page_config(page_title="Dinner Planner", page_icon="🍽️")
 
