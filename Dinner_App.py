@@ -523,16 +523,25 @@ else:
     data = load_user_data(username)
     
     # Sidebar Navigation
-    st.sidebar.title(f"Profile: {username}")
+    st.sidebar.title(f"Kitchen: {username}")
     
-    if st.sidebar.button(f"👤 Edit Profile / Meals"):
-        st.session_state.app_mode = "Profile"
-        st.rerun()
+    # Dynamic Navigation Button (Changes based on where you are)
+    if st.session_state.app_mode == "Planner":
+        # If looking at the plan, show button to go to Settings
+        if st.sidebar.button(f"👤 Edit Profile / Ingredients", use_container_width=True):
+            st.session_state.app_mode = "Profile"
+            st.rerun()
+            
+    elif st.session_state.app_mode == "Profile":
+        # If looking at Settings, show button to go back to Plan
+        if st.sidebar.button(f"⬅️ Back to Meal Plan", type="primary", use_container_width=True):
+            st.session_state.app_mode = "Planner"
+            st.rerun()
         
     st.sidebar.divider()
     
-    # LOGOUT becomes "Lock Profile"
-    if st.sidebar.button("🔒 Logout"):
+    # Lock Profile Button (Always visible)
+    if st.sidebar.button("🔒 Lock Profile", use_container_width=True):
         st.session_state.current_user = None
         st.session_state.app_mode = "Planner"
         st.rerun()
